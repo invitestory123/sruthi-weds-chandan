@@ -165,193 +165,251 @@ function ScratchDate(){
 }
 
 function App(){
- const [entered,setEntered]=useState(false);
- const [introPlaying,setIntroPlaying]=useState(false);
- const [activeVenue,setActiveVenue]=useState(0);
- const [isPlayingBgm,setIsPlayingBgm]=useState(false);
+  const [introPlaying,setIntroPlaying]=useState(false);
+  const [activeVenue,setActiveVenue]=useState(0);
+  const [isPlayingBgm,setIsPlayingBgm]=useState(false);
 
- const introVideo=useRef<HTMLVideoElement>(null);
- const ytPlayerRef=useRef<any>(null);
- const ytReady=useRef(false);
+  const introVideo=useRef<HTMLVideoElement>(null);
+  const heroSection=useRef<HTMLElement>(null);
+  const ytPlayerRef=useRef<any>(null);
+  const ytReady=useRef(false);
 
- const reduce=useReducedMotion();
- const {scrollYProgress}=useScroll();
- const leafY=useTransform(scrollYProgress,[0,1],[0,180]);
- const templeY=useTransform(scrollYProgress,[0,1],[0,95]);
- const page=useRef<HTMLElement>(null);
+  const reduce=useReducedMotion();
+  const {scrollYProgress}=useScroll();
+  const leafY=useTransform(scrollYProgress,[0,1],[0,180]);
+  const templeY=useTransform(scrollYProgress,[0,1],[0,95]);
+  const page=useRef<HTMLElement>(null);
 
- // Initialize YouTube IFrame API for background music (starts at 53 seconds)
- useEffect(()=>{
-   const onYouTubeIframeAPIReady = () => {
-     try {
-       ytPlayerRef.current = new (window as any).YT.Player('yt-bgm-container', {
-         height: '1',
-         width: '1',
-         videoId: 'KBYSpR8N6pc',
-         playerVars: {
-           start: 53,
-           autoplay: 0,
-           controls: 0,
-           disablekb: 1,
-           fs: 0,
-           loop: 1,
-           playlist: 'KBYSpR8N6pc',
-           playsinline: 1,
-         },
-         events: {
-           onReady: () => {
-             ytReady.current = true;
-           },
-           onStateChange: (event: any) => {
-             if (event.data === (window as any).YT.PlayerState.PLAYING) {
-               setIsPlayingBgm(true);
-             } else if (event.data === (window as any).YT.PlayerState.PAUSED || event.data === (window as any).YT.PlayerState.ENDED) {
-               setIsPlayingBgm(false);
-             }
-           }
-         }
-       });
-     } catch (err) {
-       console.warn('YouTube Player initialization:', err);
-     }
-   };
+  // Initialize YouTube IFrame API for background music (Chanakya - Rishab Sharma, looped)
+  useEffect(()=>{
+    const onYouTubeIframeAPIReady = () => {
+      try {
+        ytPlayerRef.current = new (window as any).YT.Player('yt-bgm-container', {
+          height: '1',
+          width: '1',
+          videoId: 'nGVoYokIztc',
+          playerVars: {
+            autoplay: 0,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            loop: 1,
+            playlist: 'nGVoYokIztc',
+            playsinline: 1,
+            enablejsapi: 1,
+            origin: window.location.origin,
+          },
+          events: {
+            onReady: () => {
+              ytReady.current = true;
+            },
+            onStateChange: (event: any) => {
+              const YTState = (window as any).YT?.PlayerState;
+              if (event.data === YTState?.PLAYING) {
+                setIsPlayingBgm(true);
+              } else if (event.data === YTState?.PAUSED) {
+                setIsPlayingBgm(false);
+              } else if (event.data === YTState?.ENDED) {
+                // Ensure uninterrupted seamless looping
+                try {
+                  ytPlayerRef.current?.seekTo(0, true);
+                  ytPlayerRef.current?.playVideo();
+                  setIsPlayingBgm(true);
+                } catch (e) {
+                  console.warn('BGM loop error:', e);
+                }
+              }
+            }
+          }
+        });
+      } catch (err) {
+        console.warn('YouTube Player initialization:', err);
+      }
+    };
 
-   if ((window as any).YT && (window as any).YT.Player) {
-     onYouTubeIframeAPIReady();
-   } else {
-     (window as any).onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
-     if (!document.getElementById('yt-iframe-script')) {
-       const tag = document.createElement('script');
-       tag.id = 'yt-iframe-script';
-       tag.src = 'https://www.youtube.com/iframe_api';
-       const firstScriptTag = document.getElementsByTagName('script')[0];
-       firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
-     }
-   }
- },[]);
+    if ((window as any).YT && (window as any).YT.Player) {
+      onYouTubeIframeAPIReady();
+    } else {
+      (window as any).onYouTubeIframeAPIReady = onYouTubeIframeAPIReady;
+      if (!document.getElementById('yt-iframe-script')) {
+        const tag = document.createElement('script');
+        tag.id = 'yt-iframe-script';
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+      }
+    }
+  },[]);
 
- const playBgm = () => {
-   if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideo === 'function') {
-     try {
-       ytPlayerRef.current.seekTo(53, true);
-       ytPlayerRef.current.playVideo();
-       setIsPlayingBgm(true);
-     } catch (e) {
-       console.warn(e);
-     }
-   }
- };
+  const playBgm = () => {
+    if (ytPlayerRef.current && typeof ytPlayerRef.current.playVideo === 'function') {
+      try {
+        const state = ytPlayerRef.current.getPlayerState?.();
+        // If already playing (1) or buffering (3), do not restart or seek!
+        if (state === 1 || state === 3) {
+          setIsPlayingBgm(true);
+          return;
+        }
+        ytPlayerRef.current.playVideo();
+        setIsPlayingBgm(true);
+      } catch (e) {
+        console.warn(e);
+      }
+    }
+  };
 
- const toggleBgm = () => {
-   if (!ytPlayerRef.current || typeof ytPlayerRef.current.getPlayerState !== 'function') return;
-   try {
-     const state = ytPlayerRef.current.getPlayerState();
-     if (state === 1) { // playing
-       ytPlayerRef.current.pauseVideo();
-       setIsPlayingBgm(false);
-     } else {
-       ytPlayerRef.current.playVideo();
-       setIsPlayingBgm(true);
-     }
-   } catch (e) {
-     console.warn(e);
-   }
- };
+  const toggleBgm = () => {
+    if (!ytPlayerRef.current || typeof ytPlayerRef.current.getPlayerState !== 'function') return;
+    try {
+      const state = ytPlayerRef.current.getPlayerState();
+      if (state === 1) { // playing
+        ytPlayerRef.current.pauseVideo();
+        setIsPlayingBgm(false);
+      } else {
+        ytPlayerRef.current.playVideo();
+        setIsPlayingBgm(true);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  };
 
- const handleOpenInvitation = () => {
-   const v=introVideo.current;
-   if(v){
-     v.currentTime=0;
-     setIntroPlaying(true);
-     void v.play().catch(()=>setIntroPlaying(false));
-   }
-   playBgm();
- };
+  // Start BGM on first user interaction so it begins naturally
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      playBgm();
+    };
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true, passive: true });
+    window.addEventListener('scroll', handleFirstInteraction, { once: true, passive: true });
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('scroll', handleFirstInteraction);
+    };
+  }, []);
 
- const handleSkipIntro = () => {
-   setEntered(true);
-   playBgm();
- };
+  const scrollToHero = () => {
+    heroSection.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
- useEffect(()=>{
-   if(reduce||!entered||!page.current)return;
-   gsap.registerPlugin(ScrollTrigger);
-   const ctx=gsap.context(()=>{
-    gsap.fromTo('.hero-copy>*',{opacity:0,y:30},{opacity:1,y:0,duration:1,stagger:.12,ease:'power3.out'});
-    gsap.to('.hero-art',{scale:1.09,yPercent:7,ease:'none',scrollTrigger:{trigger:'.hero',start:'top top',end:'bottom top',scrub:1}});
-    gsap.utils.toArray<HTMLElement>('.event').forEach((el,i)=>gsap.fromTo(el,{opacity:0,x:i%2?-42:42,rotate:.5},{opacity:1,x:0,rotate:0,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 86%',end:'top 58%',scrub:.8}}));
-    gsap.fromTo('.ceremony-image img',{scale:1.18,yPercent:-5},{scale:1,yPercent:5,ease:'none',scrollTrigger:{trigger:'.ceremony-image',start:'top bottom',end:'bottom top',scrub:1}});
-    gsap.fromTo('.story-inner',{clipPath:'inset(0 50% 0 50%)',opacity:.4},{clipPath:'inset(0 0% 0 0%)',opacity:1,ease:'power2.out',scrollTrigger:{trigger:'.story',start:'top 80%',end:'center 55%',scrub:1}});
-    gsap.to('.map i',{y:-10,repeat:-1,yoyo:true,duration:1.2,ease:'sine.inOut'});
-    gsap.utils.toArray<HTMLElement>('.atmos-lantern').forEach((el,i)=>{const depth=Number(el.dataset.depth||.4);gsap.to(el,{yPercent:-90*depth,x:Math.sin(i)*18*depth,rotation:i%2?4:-4,ease:'none',scrollTrigger:{trigger:page.current,start:'top top',end:'bottom bottom',scrub:1.2+depth}});gsap.to(el.querySelector('.lantern-flame'),{scaleY:1.18,opacity:.72,repeat:-1,yoyo:true,duration:.7+i*.08,ease:'sine.inOut'})});
-   },page);
-   return()=>ctx.revert();
- },[entered,reduce]);
+  const handleOpenInvitation = () => {
+    playBgm();
+    const v = introVideo.current;
+    if (v) {
+      v.currentTime = 0;
+      setIntroPlaying(true);
+      void v.play().catch(() => {});
+      // Glide smoothly to hero section as doors open
+      const timer = setTimeout(() => {
+        scrollToHero();
+      }, 2600);
+      v.onended = () => {
+        clearTimeout(timer);
+        scrollToHero();
+      };
+    } else {
+      scrollToHero();
+    }
+  };
 
- const currentVenue = events[activeVenue];
+  // Pause intro video when scrolled past slide 1 for battery/perf optimization
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > window.innerHeight) {
+        if (introVideo.current && !introVideo.current.paused) {
+          introVideo.current.pause();
+        }
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
- return <main ref={page}>
-  {/* Hidden YouTube Audio Mount */}
-  <div style={{position:'fixed',left:'-9999px',bottom:'-9999px',width:'1px',height:'1px',overflow:'hidden',opacity:0,pointerEvents:'none'}}>
-    <div id="yt-bgm-container" />
-  </div>
+  useEffect(()=>{
+    if(reduce||!page.current)return;
+    gsap.registerPlugin(ScrollTrigger);
+    const ctx=gsap.context(()=>{
+     gsap.fromTo('.hero-copy>*',{opacity:0,y:30},{opacity:1,y:0,duration:1,stagger:.12,ease:'power3.out',scrollTrigger:{trigger:'.hero',start:'top 75%'}});
+     gsap.to('.hero-art',{scale:1.09,yPercent:7,ease:'none',scrollTrigger:{trigger:'.hero',start:'top top',end:'bottom top',scrub:1}});
+     gsap.utils.toArray<HTMLElement>('.event').forEach((el,i)=>gsap.fromTo(el,{opacity:0,x:i%2?-42:42,rotate:.5},{opacity:1,x:0,rotate:0,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 86%',end:'top 58%',scrub:.8}}));
+     gsap.fromTo('.ceremony-image img',{scale:1.18,yPercent:-5},{scale:1,yPercent:5,ease:'none',scrollTrigger:{trigger:'.ceremony-image',start:'top bottom',end:'bottom top',scrub:1}});
+     gsap.fromTo('.story-inner',{clipPath:'inset(0 50% 0 50%)',opacity:.4},{clipPath:'inset(0 0% 0 0%)',opacity:1,ease:'power2.out',scrollTrigger:{trigger:'.story',start:'top 80%',end:'center 55%',scrub:1}});
+     gsap.to('.map i',{y:-10,repeat:-1,yoyo:true,duration:1.2,ease:'sine.inOut'});
+     gsap.utils.toArray<HTMLElement>('.atmos-lantern').forEach((el,i)=>{const depth=Number(el.dataset.depth||.4);gsap.to(el,{yPercent:-90*depth,x:Math.sin(i)*18*depth,rotation:i%2?4:-4,ease:'none',scrollTrigger:{trigger:page.current,start:'top top',end:'bottom bottom',scrub:1.2+depth}});gsap.to(el.querySelector('.lantern-flame'),{scaleY:1.18,opacity:.72,repeat:-1,yoyo:true,duration:.7+i*.08,ease:'sine.inOut'})});
+    },page);
+    return()=>ctx.revert();
+  },[reduce]);
 
-  {/* Floating BGM Play/Pause Button */}
-  <button
-    type="button"
-    onClick={toggleBgm}
-    className={'bgm-toggle '+(isPlayingBgm?'is-playing':'')}
-    aria-label={isPlayingBgm ? 'Pause background music' : 'Play background music'}
-    title="Chanakya (Sitar) — Rishab Sharma"
-  >
-    <span className="music-disc">
-      <MusicNotes size={14} weight="fill" />
-    </span>
-    <span className="sound-wave">
-      <span />
-      <span />
-      <span />
-    </span>
-    <span>{isPlayingBgm ? 'Music ON' : 'Play BGM'}</span>
-  </button>
+  const currentVenue = events[activeVenue];
 
-  <motion.div className="scroll-progress" style={{scaleX:scrollYProgress}}/>
-  
-  <div className="lantern-atmosphere" aria-hidden="true">{[
-   {x:6,y:12,d:.22,s:.62,b:2.2},{x:89,y:20,d:.35,s:.78,b:1.4},{x:12,y:42,d:.7,s:1.05,b:.4},{x:93,y:55,d:.28,s:.58,b:2.6},{x:4,y:72,d:1,s:1.35,b:.2},{x:87,y:84,d:.62,s:.92,b:.8},{x:48,y:64,d:.18,s:.42,b:3.2}
-  ].map((l,i)=><span key={i} className="atmos-lantern" data-depth={l.d} style={{left:`${l.x}%`,top:`${l.y}%`,'--scale':l.s,'--blur':`${l.b}px`,'--delay':`${-i*.6}s`} as React.CSSProperties}><i className="lantern-chain"/><i className="lantern-cap"/><i className="lantern-body"><b className="lantern-flame"/></i><i className="lantern-tail"/></span>)}</div>
+  return <main ref={page}>
+   {/* Hidden YouTube Audio Mount */}
+   <div style={{position:'fixed',left:'-9999px',bottom:'-9999px',width:'1px',height:'1px',overflow:'hidden',opacity:0,pointerEvents:'none'}}>
+     <div id="yt-bgm-container" />
+   </div>
 
-  {!entered&&<div className={'welcome '+(introPlaying?'intro-playing':'')}>
-    <video
-      ref={introVideo}
-      className="welcome-video"
-      muted
-      playsInline
-      preload="auto"
-      poster="https://media.invitestory.in/lantern-madurai/assets/entrance-first-frame.png"
-      onEnded={()=>{setEntered(true);playBgm();}}
-      aria-label="Sruthi and Chandan's illustrated wedding invitation opening"
-    >
-      <source src="https://media.invitestory.in/lantern-madurai/assets/aarav-ananya-opening.mp4" type="video/mp4"/>
-    </video>
-    <div className="welcome-shade"/>
-    <div className="garland-edge"/>
-    {!introPlaying&&<Bloom onDone={handleOpenInvitation}/>}
-    {introPlaying&&<button className="skip-intro" onClick={handleSkipIntro}>Skip intro</button>}
-  </div>}
+   {/* Floating BGM Play/Pause Button */}
+   <button
+     type="button"
+     onClick={toggleBgm}
+     className={'bgm-toggle '+(isPlayingBgm?'is-playing':'')}
+     aria-label={isPlayingBgm ? 'Pause background music' : 'Play background music'}
+     title="Chanakya — Rishab Sharma"
+   >
+     <span className="music-disc">
+       <MusicNotes size={14} weight="fill" />
+     </span>
+     <span className="sound-wave">
+       <span />
+       <span />
+       <span />
+     </span>
+     <span>{isPlayingBgm ? 'Music ON' : 'Play BGM'}</span>
+   </button>
 
-  <section className="hero">
-   <motion.img className="hero-art" src="https://media.invitestory.in/lantern-madurai/assets/invitation-reference.png" alt="Sruthi and Chandan before a sacred temple, framed by auspicious jasmine and lotus flowers" style={{y:reduce?0:templeY}} />
-   <div className="hero-scrim"/>
-   <motion.div className="hero-copy" initial={{opacity:0,y:24}} animate={{opacity:entered?1:0,y:entered?0:24}} transition={{delay:.15,duration:1}}>
-    <p className="blessing">With the blessings of our families</p>
-    <h1>Sruthi <span>&</span> Chandan</h1>
-    <div className="date-rule"><i/>25 · 10 · 2026<i/></div>
-    <p>Nandi &amp; Chikkaballapur, Karnataka</p>
-   </motion.div>
-   <motion.div className="leaf-float left" style={{y:reduce?0:leafY}}/><motion.div className="leaf-float right" style={{y:reduce?0:leafY}}/>
-   <div className="scroll-cue"><ArrowDown size={20}/><span>Our celebration</span></div>
-  </section>
+   <motion.div className="scroll-progress" style={{scaleX:scrollYProgress}}/>
+   
+   <div className="lantern-atmosphere" aria-hidden="true">{[
+    {x:6,y:12,d:.22,s:.62,b:2.2},{x:89,y:20,d:.35,s:.78,b:1.4},{x:12,y:42,d:.7,s:1.05,b:.4},{x:93,y:55,d:.28,s:.58,b:2.6},{x:4,y:72,d:1,s:1.35,b:.2},{x:87,y:84,d:.62,s:.92,b:.8},{x:48,y:64,d:.18,s:.42,b:3.2}
+   ].map((l,i)=><span key={i} className="atmos-lantern" data-depth={l.d} style={{left:`${l.x}%`,top:`${l.y}%`,'--scale':l.s,'--blur':`${l.b}px`,'--delay':`${-i*.6}s`} as React.CSSProperties}><i className="lantern-chain"/><i className="lantern-cap"/><i className="lantern-body"><b className="lantern-flame"/></i><i className="lantern-tail"/></span>)}</div>
+
+   {/* Slide 1: Welcome Entrance */}
+   <section className={'welcome-slide '+(introPlaying?'intro-playing':'')}>
+     <video
+       ref={introVideo}
+       className="welcome-video"
+       muted
+       playsInline
+       preload="auto"
+       poster="/assets/entrance-first-frame.png"
+       aria-label="Sruthi and Chandan's illustrated wedding invitation opening"
+     >
+       <source src="/assets/aarav-ananya-opening.mp4" type="video/mp4"/>
+     </video>
+     <div className="welcome-shade"/>
+     <div className="garland-edge"/>
+     <Bloom onDone={handleOpenInvitation}/>
+     {introPlaying&&<button className="skip-intro" onClick={scrollToHero}>View invitation ↓</button>}
+     <div className="welcome-scroll-cue" onClick={scrollToHero}>
+       <ArrowDown size={18}/>
+       <span>Scroll to explore</span>
+     </div>
+   </section>
+
+   {/* Slide 2: Main Invitation Hero */}
+   <section className="hero" ref={heroSection}>
+    <motion.img className="hero-art" src="/assets/invitation-reference.png" alt="Sruthi and Chandan before a sacred temple, framed by auspicious jasmine and lotus flowers" style={{y:reduce?0:templeY}} />
+    <div className="hero-scrim"/>
+    <div className="hero-copy">
+     <p className="blessing">With the blessings of our families</p>
+     <h1>Sruthi <span>&</span> Chandan</h1>
+     <div className="date-rule"><i/>25 · 10 · 2026<i/></div>
+     <p>Nandi &amp; Chikkaballapur, Karnataka</p>
+    </div>
+    <motion.div className="leaf-float left" style={{y:reduce?0:leafY}}/><motion.div className="leaf-float right" style={{y:reduce?0:leafY}}/>
+    <div className="scroll-cue" onClick={()=>{document.querySelector('.count-section')?.scrollIntoView({behavior:'smooth'})}}><ArrowDown size={20}/><span>Our celebration</span></div>
+   </section>
 
   <section className="count-section">
     <Reveal>
@@ -380,7 +438,7 @@ function App(){
     <div className="floating-glass lotus-two">❀</div>
     <div className="floating-diya">◒</div>
     <div className="ceremony-image">
-      <img src="https://media.invitestory.in/lantern-madurai/assets/haldi-mehendi.png" loading="lazy" alt="Sruthi and Chandan wedding celebration moment"/>
+      <img src="/assets/haldi-mehendi.png" loading="lazy" alt="Sruthi and Chandan wedding celebration moment"/>
     </div>
     <Reveal className="ceremony-caption">
       <p className="script">Sacred Bonds &amp; Warm Festivities</p>
@@ -490,7 +548,7 @@ function App(){
   </section>
 
   <footer>
-    <img src="https://media.invitestory.in/lantern-madurai/assets/og-aarav-ananya.png" loading="lazy" alt="Sruthi and Chandan wedding illustration"/>
+    <img src="/assets/og-aarav-ananya.png" loading="lazy" alt="Sruthi and Chandan wedding illustration"/>
     <div className="footer-overlay"/>
     <Reveal className="footer-copy">
       <Sparkle size={27} weight="thin"/>
